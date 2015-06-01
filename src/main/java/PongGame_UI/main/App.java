@@ -19,7 +19,7 @@ public class App
         PongPanel pongPanel = new PongPanel();
         frame.add(pongPanel, BorderLayout.CENTER);
 
-        frame.setSize(500, 500);
+        frame.setExtendedState(JFrame.MAXIMIZED_BOTH); 
         frame.setVisible(true);
 
     }
