@@ -8,25 +8,27 @@ import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 
-import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.Timer;
 
+import restInterfaces.PongBallSvcApi;
+import retrofit.RestAdapter;
 import models.Coordinates;
 import models.PongBall;
 
+@SuppressWarnings("serial")
 public class PongPanel extends JPanel implements ActionListener, KeyListener {
+
+	private PongBall ball;
+
+	private static final String SERVER = "http://131.254.101.102:8080/PongServerSide";
+
+	private PongBallSvcApi pongBallSvc = new RestAdapter.Builder()
+			.setEndpoint(SERVER).build().create(PongBallSvcApi.class);
 
 	private boolean showTitleScreen = true;
 	private boolean playing = false;
 	private boolean gameOver = false;
-
-	private boolean upPressed = false;
-	private boolean downPressed = false;
-	private boolean wPressed = false;
-	private boolean sPressed = false;
-
-	private PongBall ball;
 
 	private int ballDeltaX = -1;
 	private int ballDeltaY = 3;
@@ -38,17 +40,34 @@ public class PongPanel extends JPanel implements ActionListener, KeyListener {
 
 	private int playerTwoX;
 	private int playerTwoY = 250;
-	private int playerTwoWidth = 10;
 	private int playerTwoHeight = 50;
-
-	private int paddleSpeed = 5;
 
 	private int playerOneScore = 0;
 	private int playerTwoScore = 0;
 
 	// construct a PongPanel
 	public PongPanel() {
-		
+
+		initializeNonUIfields();
+
+		initializeUIFields();
+
+	}
+
+	private void initializeUIFields() {
+		setBackground(Color.BLACK);
+
+		// listen to key presses
+		setFocusable(true);
+		addKeyListener(this);
+
+		// call step() 60 fps
+		Timer timer = new Timer(1000 / 60, this);
+		timer.start();
+
+	}
+
+	private void initializeNonUIfields() {
 		int ballX = 250;
 		int ballY = 250;
 		int diameter = 20;
@@ -59,15 +78,8 @@ public class PongPanel extends JPanel implements ActionListener, KeyListener {
 		ball = PongBall.create().withId(1).withDiameter(diameter)
 				.withCoordinates(coordinates).build();
 
-		setBackground(Color.BLACK);
+		pongBallSvc.addPongBall(ball);
 
-		// listen to key presses
-		setFocusable(true);
-		addKeyListener(this);
-
-		// call step() 60 fps
-		Timer timer = new Timer(1000 / 60, this);
-		timer.start();
 	}
 
 	public void actionPerformed(ActionEvent e) {
@@ -77,29 +89,6 @@ public class PongPanel extends JPanel implements ActionListener, KeyListener {
 	public void step() {
 
 		if (playing) {
-			// move player 1
-			if (upPressed) {
-				if (playerOneY - paddleSpeed > 0) {
-					playerOneY -= paddleSpeed;
-				}
-			}
-			if (downPressed) {
-				if (playerOneY + paddleSpeed + playerOneHeight < getHeight()) {
-					playerOneY += paddleSpeed;
-				}
-			}
-
-			// move player 2
-			if (wPressed) {
-				if (playerTwoY - paddleSpeed > 0) {
-					playerTwoY -= paddleSpeed;
-				}
-			}
-			if (sPressed) {
-				if (playerTwoY + paddleSpeed + playerTwoHeight < getHeight()) {
-					playerTwoY += paddleSpeed;
-				}
-			}
 
 			// where will the ball be after it moves?
 			int nextBallLeft = ball.getCoordinates().getX() + ballDeltaX;
@@ -157,6 +146,14 @@ public class PongPanel extends JPanel implements ActionListener, KeyListener {
 					ball.getCoordinates().getX() + ballDeltaX);
 			ball.getCoordinates().setY(
 					ball.getCoordinates().getY() + ballDeltaY);
+
+			// send ball coordinates to server
+			new Thread() {
+				public void run() {
+					pongBallSvc.setCoordinates(ball.getId(),
+							ball.getCoordinates());
+				}
+			}.start();
 		}
 
 		// stuff has moved, tell this JPanel to repaint itself
@@ -170,7 +167,7 @@ public class PongPanel extends JPanel implements ActionListener, KeyListener {
 
 		int width = (int) g.getClipBounds().getWidth();
 		int height = (int) g.getClipBounds().getHeight();
-		
+
 		playerTwoX = width - width / 10;
 		playerOneX = width / 10;
 
@@ -200,16 +197,15 @@ public class PongPanel extends JPanel implements ActionListener, KeyListener {
 
 			// draw the scores
 			g.setFont(new Font(Font.DIALOG, Font.BOLD, 36));
-			g.drawString(String.valueOf(playerOneScore), (int) (width / 3.5), 100);
-			g.drawString(String.valueOf(playerTwoScore), (int) (width / 1.5), 100);
+			g.drawString(String.valueOf(playerOneScore), (int) (width / 3.5),
+					100);
+			g.drawString(String.valueOf(playerTwoScore), (int) (width / 1.5),
+					100);
 
 			// draw the ball
 			g.fillOval(ball.getCoordinates().getX(), ball.getCoordinates()
 					.getY(), ball.getDiameter(), ball.getDiameter());
 
-			// draw the paddles
-			g.fillRect(playerOneX, playerOneY, playerOneWidth, playerOneHeight);
-			g.fillRect(playerTwoX, playerTwoY, playerTwoWidth, playerTwoHeight);
 		} else if (gameOver) {
 
 			g.setFont(new Font(Font.DIALOG, Font.BOLD, 36));
@@ -238,15 +234,7 @@ public class PongPanel extends JPanel implements ActionListener, KeyListener {
 				playing = true;
 			}
 		} else if (playing) {
-			if (e.getKeyCode() == KeyEvent.VK_UP) {
-				upPressed = true;
-			} else if (e.getKeyCode() == KeyEvent.VK_DOWN) {
-				downPressed = true;
-			} else if (e.getKeyCode() == KeyEvent.VK_W) {
-				wPressed = true;
-			} else if (e.getKeyCode() == KeyEvent.VK_S) {
-				sPressed = true;
-			}
+
 		} else if (gameOver) {
 			if (e.getKeyCode() == KeyEvent.VK_SPACE) {
 				gameOver = false;
@@ -261,18 +249,6 @@ public class PongPanel extends JPanel implements ActionListener, KeyListener {
 		}
 	}
 
-	public void keyReleased(KeyEvent e) {
-		if (playing) {
-			if (e.getKeyCode() == KeyEvent.VK_UP) {
-				upPressed = false;
-			} else if (e.getKeyCode() == KeyEvent.VK_DOWN) {
-				downPressed = false;
-			} else if (e.getKeyCode() == KeyEvent.VK_W) {
-				wPressed = false;
-			} else if (e.getKeyCode() == KeyEvent.VK_S) {
-				sPressed = false;
-			}
-		}
+	public void keyReleased(KeyEvent arg0) {
 	}
-
 }
