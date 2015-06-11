@@ -40,7 +40,7 @@ public class PongPanel extends JPanel implements ActionListener, KeyListener {
 		addKeyListener(this);
 
 		// call step() 60 fps
-		Timer timer = new Timer(1000 / 100, this);
+		Timer timer = new Timer(1000 / 60, this);
 		timer.start();
 
 	}
@@ -76,8 +76,11 @@ public class PongPanel extends JPanel implements ActionListener, KeyListener {
 
 		controller.getPallet().getCoordinates()
 				.setX(controller.getPlayer1().getHittableRegion().getX());
-		controller.getPallet2().getCoordinates()
-				.setX(controller.getPlayer2().getHittableRegion().getX());
+		controller
+				.getPallet2()
+				.getCoordinates()
+				.setX(controller.getPlayer2().getHittableRegion().getX()
+						- controller.getPallet2().getDimension().getWidth());
 
 		if (showTitleScreen) {
 
@@ -97,38 +100,17 @@ public class PongPanel extends JPanel implements ActionListener, KeyListener {
 			int playerTwoLeft = controller.getPlayer2().getHittableRegion()
 					.getX();
 
-			// draw dashed line down center
-			for (int lineY = 0; lineY < getHeight(); lineY += 50) {
-				g.drawLine(screen.getWidth() / 2, lineY, screen.getWidth() / 2,
-						lineY + 25);
-			}
+			drawDashedLineDownCenter(g);
 
 			// draw "goal lines" on each side
 			g.drawLine(playerOneRight, 0, playerOneRight, getHeight());
 			g.drawLine(playerTwoLeft, 0, playerTwoLeft, getHeight());
 
-			// draw the scores
-			g.setFont(new Font(Font.DIALOG, Font.BOLD, 36));
-			g.drawString(String.valueOf(controller.getPlayer1().getScore()),
-					(int) (screen.getWidth() / 3.5), 100);
-			g.drawString(String.valueOf(controller.getPlayer2().getScore()),
-					(int) (screen.getWidth() / 1.5), 100);
+			drawScores(g);
 
-			// draw the ball
-			g.fillOval(controller.getBall().getCoordinates().getX(), controller
-					.getBall().getCoordinates().getY(), controller.getBall()
-					.getDiameter(), controller.getBall().getDiameter());
+			drawBall(g);
 
-			// draw the players' pallets
-			g.drawRect(controller.getPallet().getCoordinates().getX(),
-					controller.getPallet().getCoordinates().getY(), controller
-							.getPallet().getDimension().getWidth(), controller
-							.getPallet().getDimension().getHeight());
-
-			g.drawRect(controller.getPallet2().getCoordinates().getX(),
-					controller.getPallet2().getCoordinates().getY(), controller
-							.getPallet2().getDimension().getWidth(), controller
-							.getPallet2().getDimension().getHeight());
+			drawPlayerPallets(g);
 
 		} else if (controller.isGameOver()) {
 
@@ -149,6 +131,49 @@ public class PongPanel extends JPanel implements ActionListener, KeyListener {
 			g.setFont(new Font(Font.DIALOG, Font.BOLD, 18));
 			g.drawString("Press space to restart.", 150, 400);
 		}
+	}
+
+	private void drawBall(Graphics g) {
+
+		g.fillOval(controller.getBall().getCoordinates().getX(), controller
+				.getBall().getCoordinates().getY(), controller.getBall()
+				.getDiameter(), controller.getBall().getDiameter());
+
+	}
+
+	private void drawScores(Graphics g) {
+
+		g.setFont(new Font(Font.DIALOG, Font.BOLD, 36));
+		g.drawString(String.valueOf(controller.getPlayer1().getScore()),
+				(int) (screen.getWidth() / 3.5), 100);
+		g.drawString(String.valueOf(controller.getPlayer2().getScore()),
+				(int) (screen.getWidth() / 1.5), 100);
+
+	}
+
+	private void drawDashedLineDownCenter(Graphics g) {
+
+		for (int lineY = 0; lineY < getHeight(); lineY += 50) {
+			g.drawLine(screen.getWidth() / 2, lineY, screen.getWidth() / 2,
+					lineY + 25);
+		}
+
+	}
+
+	private void drawPlayerPallets(Graphics g) {
+
+		g.setColor(Color.red);
+		g.fillRect(controller.getPallet().getCoordinates().getX(), controller
+				.getPallet().getCoordinates().getY(), controller.getPallet()
+				.getDimension().getWidth(), controller.getPallet()
+				.getDimension().getHeight());
+
+		g.setColor(Color.orange);
+		g.fillRect(controller.getPallet2().getCoordinates().getX(), controller
+				.getPallet2().getCoordinates().getY(), controller.getPallet2()
+				.getDimension().getWidth(), controller.getPallet2()
+				.getDimension().getHeight());
+
 	}
 
 	public void keyTyped(KeyEvent e) {
