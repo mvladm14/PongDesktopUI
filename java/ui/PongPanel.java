@@ -12,7 +12,7 @@ import javax.swing.JPanel;
 import javax.swing.Timer;
 
 import logic.PongController;
-import models.Screen;
+import models.player.Screen;
 
 @SuppressWarnings("serial")
 public class PongPanel extends JPanel implements ActionListener, KeyListener {
@@ -39,8 +39,8 @@ public class PongPanel extends JPanel implements ActionListener, KeyListener {
 		setFocusable(true);
 		addKeyListener(this);
 
-		// call step() 60 fps
-		Timer timer = new Timer(1000 / 60, this);
+		// call step() 200 fps
+		Timer timer = new Timer(1000 / 200, this);
 		timer.start();
 
 	}
@@ -163,16 +163,16 @@ public class PongPanel extends JPanel implements ActionListener, KeyListener {
 	private void drawPlayerPallets(Graphics g) {
 
 		g.setColor(Color.red);
-		g.fillRect(controller.getPallet().getCoordinates().getX(), controller
-				.getPallet().getCoordinates().getY(), controller.getPallet()
-				.getDimension().getWidth(), controller.getPallet()
-				.getDimension().getHeight());
+		g.fillRect((int) controller.getPallet().getCoordinates().getX(),
+				(int) controller.getPallet().getCoordinates().getY(),
+				controller.getPallet().getDimension().getWidth(), controller
+						.getPallet().getDimension().getHeight());
 
 		g.setColor(Color.orange);
-		g.fillRect(controller.getPallet2().getCoordinates().getX(), controller
-				.getPallet2().getCoordinates().getY(), controller.getPallet2()
-				.getDimension().getWidth(), controller.getPallet2()
-				.getDimension().getHeight());
+		g.fillRect((int) controller.getPallet2().getCoordinates().getX(),
+				(int) controller.getPallet2().getCoordinates().getY(),
+				controller.getPallet2().getDimension().getWidth(), controller
+						.getPallet2().getDimension().getHeight());
 
 	}
 
@@ -186,6 +186,9 @@ public class PongPanel extends JPanel implements ActionListener, KeyListener {
 				controller.setPlaying(true);
 			}
 		} else if (controller.isPlaying()) {
+			if (e.getKeyChar() == 'q') {
+				controller.stopGame();
+			}
 
 		} else if (controller.isGameOver()) {
 			if (e.getKeyCode() == KeyEvent.VK_SPACE) {
