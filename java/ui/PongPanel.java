@@ -3,6 +3,7 @@ package ui;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics;
+import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
@@ -40,14 +41,14 @@ public class PongPanel extends JPanel implements ActionListener, KeyListener {
 		addKeyListener(this);
 
 		// call step() 200 fps
-		Timer timer = new Timer(1000 / 200, this);
+		Timer timer = new Timer(3, this);
 		timer.start();
 
 	}
 
 	private void initializeNonUIfields() {
 		screen = new Screen();
-		controller = new PongController(screen);
+		controller = new PongController(screen, this);
 	}
 
 	public void actionPerformed(ActionEvent e) {
@@ -55,10 +56,10 @@ public class PongPanel extends JPanel implements ActionListener, KeyListener {
 	}
 
 	public void step() {
-
+		
 		controller.performStep(screen.getHeight(), screen.getWidth());
 		// stuff has moved, tell this JPanel to repaint itself
-		repaint();
+		//repaint();
 	}
 
 	// paint the game screen
@@ -187,6 +188,7 @@ public class PongPanel extends JPanel implements ActionListener, KeyListener {
 			}
 		} else if (controller.isPlaying()) {
 			if (e.getKeyChar() == 'q') {
+				System.out.println("Writing to file has stopped.");
 				controller.stopGame();
 			}
 

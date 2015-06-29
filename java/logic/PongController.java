@@ -2,34 +2,27 @@ package logic;
 
 import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Iterator;
+import java.util.List;
 
 import models.NextBallPosition;
 import models.NextBallPositionFactory;
+import models.ball.BallCoordinates;
+import models.ball.BallSpeed;
 import models.ball.PongBall;
-import models.phone.PhoneSensors;
 import models.player.Coordinates;
 import models.player.Dimension;
+import models.player.HittableRegion;
 import models.player.Pallet;
 import models.player.Player;
 import models.player.Screen;
-import models.sensors.SensorManager;
-import restInterfaces.PlayerSvcApi;
-import restInterfaces.PongBallSvcApi;
-import retrofit.RestAdapter;
+import models.sensors.LinearAcceleration;
+import ui.PongPanel;
 
 public class PongController {
 
-	private static final String SERVER = "http://131.254.101.102:8080/myriads";
-
-	private PongBallSvcApi pongBallSvc = new RestAdapter.Builder()
-			.setEndpoint(SERVER).build().create(PongBallSvcApi.class);
-	private PlayerSvcApi playerSvc = new RestAdapter.Builder()
-			.setEndpoint(SERVER).build().create(PlayerSvcApi.class);
-
 	private Player player1;
 	private Player player2;
+
 	private PongBall ball;
 
 	private NextBallPosition nextBallPosition;
@@ -37,27 +30,37 @@ public class PongController {
 	private Pallet pallet;
 	private Pallet pallet2;
 
-	private Screen screen;
-
-	private boolean playing = false;
-	private boolean gameOver = false;
-
-	static final float NS2S = 1.0f / 100000000000.0f;
+	static final float NS2S = 1.0f / 10000000.0f;
 	long last_timestamp = 0;
 
-	private ArrayList<Float> distances;
+	private long initialTime, finalTime;
 
-	public PongController(Screen screen) {
+	private long counter;
 
-		Collection<PongBall> balls = pongBallSvc.getPongBalls();
-		ball = balls.iterator().next();
+	private logic.TCPServer mServer;
+	private List<Float> distances;
+	private List<Float> linearAccelerations;
+	private boolean playing = false;
+	private boolean gameOver = false;
+	private PongPanel pongPanel;
+	private Screen screen;
 
-		Collection<Player> players = playerSvc.getPlayersList();
-		Iterator<Player> playerIterator = players.iterator();
-		player1 = playerIterator.next();
-		player2 = playerIterator.next();
+	public PongController(Screen screen, PongPanel pongPanel) {
 
-		pongBallSvc.addPongBall(ball);
+		this.pongPanel = pongPanel;
+		this.screen = screen;
+
+		linearAccelerations = new ArrayList<Float>();
+		distances = new ArrayList<Float>();
+
+		initializeTCPServer();
+
+		BallCoordinates ballCoordinates = new BallCoordinates(250, 250);
+		BallSpeed ballSpeed = new BallSpeed(-1, 3);
+		ball = new PongBall(1, ballCoordinates, 20, ballSpeed);
+
+		player1 = new Player(1, "vlad", 0, true, new HittableRegion(5));
+		player2 = new Player(2, "roxy", 0, true, new HittableRegion(5));
 
 		Dimension dimension = new Dimension(20, 100);
 		Coordinates coordinates = new Coordinates(200, 200);
@@ -68,13 +71,40 @@ public class PongController {
 		pallet = new Pallet(coordinates, dimension);
 		pallet2 = new Pallet(coordinates2, dimension2);
 
-		last_timestamp = playerSvc.getTimeStamp(1);
+		initialTime = System.nanoTime();
 
-		this.screen = screen;
-		distances = new ArrayList<Float>();
+	}
 
-		// movePallets();
+	private void initializeTCPServer() {
+		// creates the object OnMessageReceived asked by the TCPServer
+		// constructor
+		mServer = new TCPServer(new TCPServer.OnMessageReceived() {
+			// this method declared in the interface from TCPServer
+			// class is implemented here
+			// this method is actually a callback method, because it
+			// will run every time when it will be called from
+			// TCPServer class (at while)
+			public void messageReceived(LinearAcceleration linearAcceleration) {
 
+				float yAcceleration = linearAcceleration.getValues();
+				//mServer.sendMessage("" + yAcceleration);
+				//System.out.println("Received: " + yAcceleration);
+				linearAccelerations.add(Float.valueOf(yAcceleration));
+
+				float dt = (linearAcceleration.getTimestamp() - last_timestamp)
+						* NS2S;
+				if (dt > 0.0f && last_timestamp != 0) {
+					float distance = yAcceleration * dt * dt * 2.0f;
+					distances.add(Float.valueOf(distance));
+					//System.out.println(distance + "");
+					updatePalletPosition(pallet, distance);
+				}
+				last_timestamp = linearAcceleration.getTimestamp();
+				
+				
+			}
+		});
+		mServer.start();
 	}
 
 	public void performStep(int screenHeight, int screenWidth) {
@@ -89,28 +119,6 @@ public class PongController {
 
 			updateScore(nextBallPosition, screenWidth);
 			moveBall();
-			movePallets();
-
-			// has the ball entered the area where it can be hit
-			// by the first (left sided) player?
-			if (nextBallPosition.getLeft() < player1.getHittableRegion().getX()) {
-				// ball has entered the area where it can be hit
-				leftPlayerHitBall();
-			} else {
-				player1.setCanHitBall(true);
-			}
-
-			// has the ball entered the area where it can be hit
-			// by the second (right sided) player?
-			if (nextBallPosition.getRight() > player2.getHittableRegion()
-					.getX()) {
-				// ball has entered the area where it can be hit
-				rightPlayerHitBall();
-			} else {
-				player2.setCanHitBall(true);
-			}
-
-			sendBallCoordinatesToServer();
 		}
 	}
 
@@ -136,7 +144,6 @@ public class PongController {
 			NextBallPosition nextBallPosition) {
 
 		// where will the ball be after it moves?
-
 		if (intersects(pallet, nextBallPosition)) {
 			ball.getBallSpeed().setDeltaY(ball.getBallSpeed().getDeltaY() * -1);
 			ball.getBallSpeed().setDeltaX(ball.getBallSpeed().getDeltaX() * -1);
@@ -168,131 +175,18 @@ public class PongController {
 		}
 	}
 
-	private void movePallets() {
-		new Thread() {
-			public void run() {
-				//while (true) {
-					updatePalletPosition(pallet);
-					updatePalletPosition(pallet2);
-				//}
-			}
-		}.start();
+	private void updatePalletPosition(Pallet p, float distance) {
 
+		// updateAccordingToOrientation(p);
+		// p.resolveCollisionWithBounds(this.screen);
+		updateAccordingToLinearAcceleration(p, distance);
 	}
 
-	private void rightPlayerHitBall() {
-		new Thread() {
-			public void run() {
-				if (player2.canHitBall()) {
-					PhoneSensors phoneSensors = playerSvc.getPhoneSensors(1);
-					float R[] = new float[9];
-					float I[] = new float[9];
-					float[] mGravity = phoneSensors.getAccelerometer()
-							.getValues();
-					float[] mGeomagnetic = phoneSensors.getMagneticField()
-							.getValues();
-
-					boolean success = SensorManager.getRotationMatrix(R, I,
-							mGravity, mGeomagnetic);
-					if (success) {
-						float orientation[] = new float[3];
-						SensorManager.getOrientation(R, orientation);
-						convertToDegrees(orientation);
-						if (orientation[1] > -2 && orientation[1] < 2) {
-							if (orientation[2] > 80) {
-								player2.setCanHitBall(false);
-								ball.getBallSpeed().setDeltaY(
-										ball.getBallSpeed().getDeltaY() * -1);
-								ball.getBallSpeed().setDeltaX(
-										ball.getBallSpeed().getDeltaX() * -1);
-							}
-						}
-					}
-				}
-			}
-		}.start();
-	}
-
-	private void leftPlayerHitBall() {
-		new Thread() {
-			public void run() {
-				if (player1.canHitBall()) {
-					PhoneSensors phoneSensors = playerSvc.getPhoneSensors(1);
-					float R[] = new float[9];
-					float I[] = new float[9];
-					float[] mGravity = phoneSensors.getAccelerometer()
-							.getValues();
-					float[] mGeomagnetic = phoneSensors.getMagneticField()
-							.getValues();
-
-					boolean success = SensorManager.getRotationMatrix(R, I,
-							mGravity, mGeomagnetic);
-					if (success) {
-						float orientation[] = new float[3];
-						SensorManager.getOrientation(R, orientation);
-						convertToDegrees(orientation);
-						System.out.println(orientation[1]);
-						if (orientation[1] > -2 && orientation[1] < 2) {
-							if (orientation[2] > 80) {
-								player1.setCanHitBall(false);
-								ball.getBallSpeed().setDeltaY(
-										ball.getBallSpeed().getDeltaY() * -1);
-								ball.getBallSpeed().setDeltaX(
-										ball.getBallSpeed().getDeltaX() * -1);
-							}
-						}
-					}
-				}
-			}
-		}.start();
-	}
-
-	private void updatePalletPosition(Pallet p) {
-
-		updateAccordingToOrientation(p);
+	private void updateAccordingToLinearAcceleration(Pallet p, float distance) {
+		p.updatePosition(distance);
 		p.resolveCollisionWithBounds(this.screen);
-		// updateAccordingToLinearAcceleration(p);
-	}
+		pongPanel.repaint();
 
-	private void updateAccordingToOrientation(Pallet p) {
-		PhoneSensors phoneSensors = playerSvc.getPhoneSensors(1);
-		float R[] = new float[9];
-		float I[] = new float[9];
-		float[] mAcceleration = phoneSensors.getAccelerometer().getValues();
-		float[] mGeomagnetic = phoneSensors.getMagneticField().getValues();
-
-		boolean success = SensorManager.getRotationMatrix(R, I, mAcceleration,
-				mGeomagnetic);
-		if (success) {
-			float orientation[] = new float[3];
-			SensorManager.getOrientation(R, orientation);
-			convertToDegrees(orientation);
-			p.updatePosition(orientation);
-		}
-	}
-
-	private void updateAccordingToLinearAcceleration(Pallet p) {
-		PhoneSensors phoneSensors = playerSvc.getPhoneSensors(1);
-		float[] linearAcceleration = phoneSensors.getLinearAcceleration()
-				.getValues();
-		long timestamp = phoneSensors.getSensorTimeStamp();
-
-		float dt = (timestamp - last_timestamp) * NS2S;
-		if (dt > 0f) {
-			float distance2 = linearAcceleration[1] * dt * dt / 2.0f;
-			System.out.println(distance2);
-			p.updatePosition(distance2, timestamp);
-			p.resolveCollisionWithBounds(this.screen);
-			distances.add(Float.valueOf(distance2));
-		}
-	}
-
-	private void convertToDegrees(float orientation[]) {
-		// Convert to degrees
-		for (int i = 0; i < orientation.length; i++) {
-			Double degrees = (orientation[i] * 180) / Math.PI;
-			orientation[i] = degrees.floatValue();
-		}
 	}
 
 	private void moveBall() {
@@ -300,14 +194,6 @@ public class PongController {
 				ball.getCoordinates().getX() + ball.getBallSpeed().getDeltaX());
 		ball.getCoordinates().setY(
 				ball.getCoordinates().getY() + ball.getBallSpeed().getDeltaY());
-	}
-
-	private void sendBallCoordinatesToServer() {
-		new Thread() {
-			public void run() {
-				pongBallSvc.setCoordinates(ball.getId(), ball.getCoordinates());
-			}
-		}.start();
 	}
 
 	public Pallet getPallet() {
@@ -352,16 +238,32 @@ public class PongController {
 
 	public void stopGame() {
 
+		finalTime = System.nanoTime();
 		PrintWriter writer;
 		try {
-			writer = new PrintWriter("the-file-name.txt", "UTF-8");
+			writer = new PrintWriter("distances.txt", "UTF-8");
+			System.out.println("TOTAL DISTANCES = " + distances.size());
 			for (int counter = 0; counter < distances.size(); counter++) {
 				writer.println(distances.get(counter));
 			}
 			writer.close();
+
+			try {
+				writer = new PrintWriter("linearAcc.txt", "UTF-8");
+				System.out.println("WROTE " + linearAccelerations.size());
+				for (int counter = 0; counter < linearAccelerations.size(); counter++) {
+					writer.println(linearAccelerations.get(counter));
+				}
+				writer.close();
+			} catch (Exception e1) {
+				e1.printStackTrace();
+			}
+
 		} catch (Exception e1) {
 			e1.printStackTrace();
 		}
 
+		System.out.println("TIME ELAPSED = " + (finalTime - initialTime)
+				+ " and made " + counter + " measurements.");
 	}
 }
