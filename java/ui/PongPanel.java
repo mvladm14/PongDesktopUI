@@ -3,7 +3,6 @@ package ui;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics;
-import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
@@ -13,12 +12,14 @@ import javax.swing.JPanel;
 import javax.swing.Timer;
 
 import logic.PongController;
+import logic.UIController;
 import models.player.Screen;
 
 @SuppressWarnings("serial")
 public class PongPanel extends JPanel implements ActionListener, KeyListener {
 
-	private PongController controller;
+	private PongController pongController;
+	private UIController controller;
 
 	private Screen screen;
 
@@ -41,14 +42,16 @@ public class PongPanel extends JPanel implements ActionListener, KeyListener {
 		addKeyListener(this);
 
 		// call step() 200 fps
-		Timer timer = new Timer(3, this);
+		Timer timer = new Timer(20, this);
 		timer.start();
 
 	}
 
 	private void initializeNonUIfields() {
 		screen = new Screen();
-		controller = new PongController(screen, this);
+		controller = new UIController(screen, this);
+		pongController = new PongController(controller);
+
 	}
 
 	public void actionPerformed(ActionEvent e) {
@@ -56,14 +59,15 @@ public class PongPanel extends JPanel implements ActionListener, KeyListener {
 	}
 
 	public void step() {
-		
-		controller.performStep(screen.getHeight(), screen.getWidth());
+
+		//controller.performStep(screen.getHeight(), screen.getWidth());
 		// stuff has moved, tell this JPanel to repaint itself
 		//repaint();
 	}
 
 	// paint the game screen
-	public void paintComponent(Graphics g) {
+	@Override
+	public synchronized void paintComponent(Graphics g) {
 		super.paintComponent(g);
 		g.setColor(Color.WHITE);
 
@@ -189,7 +193,7 @@ public class PongPanel extends JPanel implements ActionListener, KeyListener {
 		} else if (controller.isPlaying()) {
 			if (e.getKeyChar() == 'q') {
 				System.out.println("Writing to file has stopped.");
-				controller.stopGame();
+				pongController.stopGame();
 			}
 
 		} else if (controller.isGameOver()) {
@@ -206,4 +210,9 @@ public class PongPanel extends JPanel implements ActionListener, KeyListener {
 
 	public void keyReleased(KeyEvent arg0) {
 	}
+
+	public PongController getPongController() {
+		return pongController;
+	}
+	
 }

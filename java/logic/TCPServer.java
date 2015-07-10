@@ -18,7 +18,7 @@ import models.sensors.LinearAcceleration;
  */
 public class TCPServer extends Thread {
 
-	public static final int SERVERPORT = 4444;
+	private int serverPort;
 	private boolean running = false;
 	private PrintWriter mOut;
 	private OnMessageReceived messageListener;
@@ -29,7 +29,8 @@ public class TCPServer extends Thread {
 	 * @param messageListener
 	 *            listens for the messages
 	 */
-	public TCPServer(OnMessageReceived messageListener) {
+	public TCPServer(int serverPort, OnMessageReceived messageListener) {
+		this.serverPort = serverPort;
 		this.messageListener = messageListener;
 	}
 
@@ -54,16 +55,16 @@ public class TCPServer extends Thread {
 		running = true;
 
 		try {
-			System.out.println("S: Connecting...");
+			System.out.println("[SERVER:" +serverPort + "] Connecting...");
 
 			// create a server socket. A server socket waits for requests to
 			// come in over the network.
-			ServerSocket serverSocket = new ServerSocket(SERVERPORT);
+			ServerSocket serverSocket = new ServerSocket(serverPort);
 
 			// create client socket... the method accept() listens for a
 			// connection to be made to this socket and accepts it.
 			Socket client = serverSocket.accept();
-			System.out.println("S: Receiving...");
+			System.out.println("[SERVER:" +serverPort + "] Receiving...");
 
 			try {
 
@@ -96,11 +97,11 @@ public class TCPServer extends Thread {
 				cn.printStackTrace();
 			} finally {
 				client.close();
-				System.out.println("S: Done.");
+				System.out.println("[SERVER:" +serverPort + "] Done.");
 			}
 
 		} catch (Exception e) {
-			System.out.println("S: Error");
+			System.out.println("[SERVER:" +serverPort + "] Error");
 			e.printStackTrace();
 		}
 
