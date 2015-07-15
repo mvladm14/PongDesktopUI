@@ -1,5 +1,10 @@
 package logic;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+
+import restInterfaces.PlayerSvcApi;
+import retrofit.RestAdapter;
 import ui.PongPanel;
 import models.NextBallPosition;
 import models.NextBallPositionFactory;
@@ -14,6 +19,11 @@ import models.player.Player;
 import models.player.Screen;
 
 public class UIController {
+
+	private static InetAddress IP;
+	private static String SERVER;
+
+	private PlayerSvcApi pongSvc;
 
 	private Pallet pallet;
 	private Pallet pallet2;
@@ -31,33 +41,29 @@ public class UIController {
 
 	public UIController(Screen screen, PongPanel pongPanel) {
 
+		try {
+			IP = InetAddress.getLocalHost();
+		} catch (UnknownHostException e) {
+			e.printStackTrace();
+		}
+
+		// SERVER = "http://" + IP.getHostAddress() + ":8080/myriads";
+		// SERVER = "http://" + IP.getHostAddress() + ":8080/PongServerSide";
+		SERVER = "http://" + "131.254.100.202" + ":8080/PongServerSide";
+
+		pongSvc = new RestAdapter.Builder().setEndpoint(SERVER).build()
+				.create(PlayerSvcApi.class);
+
+		System.out.println("SERVER: " + SERVER);
+
 		this.pongPanel = pongPanel;
 		this.screen = screen;
 
 		BallCoordinates ballCoordinates = new BallCoordinates(250, 250);
 		BallSpeed ballSpeed = new BallSpeed(-1, 1);
 		ball = new PongBall(1, ballCoordinates, 20, ballSpeed);
-		
-		HittableRegion hittableRegionP1 = HittableRegion.create()
-				.withX(5).build();
-		HittableRegion hittableRegionP2 = HittableRegion.create()
-				.withX(5).build();
-		
-		player1 = Player.create()
-				.withId(1)
-				.withUsername("vlad")
-				.withScore(0)
-				.withCanHitBall(true)
-				.withHittableRegion(hittableRegionP1)
-				.build();
-		
-		player2 = Player.create()
-				.withId(2)
-				.withUsername("roxy")
-				.withScore(0)
-				.withCanHitBall(true)
-				.withHittableRegion(hittableRegionP2)
-				.build();
+
+		initializePlayers();
 
 		Dimension dimension = new Dimension(20, 100);
 		Coordinates coordinates = new Coordinates(200, 200);
@@ -67,6 +73,25 @@ public class UIController {
 
 		pallet = new Pallet(coordinates, dimension);
 		pallet2 = new Pallet(coordinates2, dimension2);
+	}
+
+	private void initializePlayers() {
+		HittableRegion hittableRegionP1 = HittableRegion.create().withX(5)
+				.build();
+		HittableRegion hittableRegionP2 = HittableRegion.create().withX(5)
+				.build();
+
+		player1 = Player.create().withId(1).withUsername("vlad").withScore(0)
+				.withCanHitBall(true).withCanPlay(true)
+				.withHittableRegion(hittableRegionP1).build();
+
+		player2 = Player.create().withId(2).withUsername("roxy").withScore(0)
+				.withCanHitBall(true).withCanPlay(true)
+				.withHittableRegion(hittableRegionP2).build();
+
+		pongSvc.addPlayer(player1);
+		pongSvc.addPlayer(player2);
+
 	}
 
 	public void performStep(int screenHeight, int screenWidth) {
@@ -199,7 +224,5 @@ public class UIController {
 	public void setScreen(Screen screen) {
 		this.screen = screen;
 	}
-	
-	
 
 }

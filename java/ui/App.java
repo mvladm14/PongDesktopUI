@@ -6,14 +6,10 @@ import java.awt.event.WindowEvent;
 
 import javax.swing.JFrame;
 
-import models.player.HittableRegion;
-
 public class App {
-	
 
-	
 	public static void main(String[] args) {
-		
+
 		JFrame frame = new JFrame("Pong");
 
 		frame.setLayout(new BorderLayout());
