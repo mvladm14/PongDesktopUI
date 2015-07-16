@@ -24,6 +24,10 @@ public class PongController {
 	private List<Float> velocities;
 	private List<Float> velocities2;
 
+	private Float velocity = 0f;
+
+	private Float distance = 0f;
+
 	public PongController(UIController uiHelper) {
 
 		this.uiHelper = uiHelper;
@@ -59,7 +63,7 @@ public class PongController {
 
 				});
 		mServer1.start();
-		
+
 		mServer2 = new TCPServer(SERVER_PORT_2,
 				new TCPServer.OnMessageReceived() {
 					// this method declared in the interface from TCPServer
@@ -95,18 +99,30 @@ public class PongController {
 
 				float yAcceleration = linearAcceleration.getValues();
 
-				float initialVelocity = pallet.getVelocity();
+				if (Math.abs(yAcceleration) < 1.8f) {
+					pallet.setErrorCounter(pallet.getErrorCounter() + 1);
+				} else {
+					pallet.setErrorCounter(0);
+				}
+				if (pallet.getErrorCounter() < 10) {
 
-				pallet.setVelocity(initialVelocity + yAcceleration * dt);
-				pallet.setDistance((initialVelocity * dt + pallet.getVelocity() * dt / 2f) * 400f);
+					float initialVelocity = pallet.getVelocity();
 
-				velocities2.add(yAcceleration * dt);
+					pallet.setVelocity(initialVelocity + yAcceleration * dt);
+					pallet.setDistance((initialVelocity * dt + pallet
+							.getVelocity() * dt / 2f) * 400f);
 
-//				linearAccelerations.add(yAcceleration);
-//				velocities.add(velocity);
-//				distances.add(distance);
+					velocities2.add(yAcceleration * dt);
 
-				updatePalletPosition(pallet, pallet.getDistance());
+					linearAccelerations.add(yAcceleration);
+					velocities.add(pallet.getVelocity());
+					distances.add(pallet.getDistance());
+
+					updatePalletPosition(pallet, pallet.getDistance());
+				} else {
+					pallet.setVelocity(0f);
+					pallet.setErrorCounter(0);
+				}
 			}
 		}
 		pallet.setLastTimeStamp(linearAcceleration.getTimestamp());
@@ -147,13 +163,11 @@ public class PongController {
 			e1.printStackTrace();
 		}
 	}
-	
+
 	public void stopServers() {
 		mServer1.stop();
 		mServer2.stop();
 		System.out.println("Servers were stopped");
 	}
 
-	
-	
 }

@@ -60,7 +60,7 @@ public class PongPanel extends JPanel implements ActionListener, KeyListener {
 
 	public void step() {
 
-		//controller.performStep(screen.getHeight(), screen.getWidth());
+		controller.performStep(screen.getHeight(), screen.getWidth());
 		// stuff has moved, tell this JPanel to repaint itself
 		//repaint();
 	}

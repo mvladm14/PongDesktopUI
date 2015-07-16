@@ -16,6 +16,7 @@ import models.player.Dimension;
 import models.player.HittableRegion;
 import models.player.Pallet;
 import models.player.Player;
+import models.player.PlayerState;
 import models.player.Screen;
 
 public class UIController {
@@ -47,9 +48,9 @@ public class UIController {
 			e.printStackTrace();
 		}
 
-		// SERVER = "http://" + IP.getHostAddress() + ":8080/myriads";
+		SERVER = "http://" + IP.getHostAddress() + ":8080/myriads";
 		// SERVER = "http://" + IP.getHostAddress() + ":8080/PongServerSide";
-		SERVER = "http://" + "131.254.100.202" + ":8080/PongServerSide";
+		// SERVER = "http://" + "131.254.100.202" + ":8080/PongServerSide";
 
 		pongSvc = new RestAdapter.Builder().setEndpoint(SERVER).build()
 				.create(PlayerSvcApi.class);
@@ -82,11 +83,11 @@ public class UIController {
 				.build();
 
 		player1 = Player.create().withId(1).withUsername("vlad").withScore(0)
-				.withCanHitBall(true).withCanPlay(true)
+				.withCanHitBall(true).withPlayerState(PlayerState.AVAILABLE)
 				.withHittableRegion(hittableRegionP1).build();
 
 		player2 = Player.create().withId(2).withUsername("roxy").withScore(0)
-				.withCanHitBall(true).withCanPlay(true)
+				.withCanHitBall(true).withPlayerState(PlayerState.AVAILABLE)
 				.withHittableRegion(hittableRegionP2).build();
 
 		pongSvc.addPlayer(player1);
