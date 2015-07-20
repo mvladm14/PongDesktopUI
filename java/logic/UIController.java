@@ -48,9 +48,9 @@ public class UIController {
 			e.printStackTrace();
 		}
 
-		SERVER = "http://" + IP.getHostAddress() + ":8080/myriads";
+		//SERVER = "http://" + IP.getHostAddress() + ":8080/myriads";
 		// SERVER = "http://" + IP.getHostAddress() + ":8080/PongServerSide";
-		// SERVER = "http://" + "131.254.100.202" + ":8080/PongServerSide";
+		SERVER = "http://" + "131.254.100.202" + ":8080/PongServerSide";
 
 		pongSvc = new RestAdapter.Builder().setEndpoint(SERVER).build()
 				.create(PlayerSvcApi.class);

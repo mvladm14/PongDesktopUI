@@ -16,6 +16,11 @@ public class PongController {
 
 	private static final float NS2S = 1.0f / 1000000000.0f;
 
+	private static final float PHONE_ERROR = 1.8f;
+	private static final float BAND_ERROR = 0.0f;
+
+	private static final boolean USES_BAND = false;
+
 	private logic.TCPServer mServer1;
 	private logic.TCPServer mServer2;
 
@@ -37,9 +42,9 @@ public class PongController {
 		velocities = new ArrayList<Float>();
 		velocities2 = new ArrayList<Float>();
 
-//		velocities.add(velocity);
-//		velocities2.add(velocity);
-//		distances.add(distance);
+		// velocities.add(velocity);
+		// velocities2.add(velocity);
+		// distances.add(distance);
 
 		initializeTCPServer();
 	}
@@ -99,7 +104,8 @@ public class PongController {
 
 				float yAcceleration = linearAcceleration.getValues();
 
-				if (Math.abs(yAcceleration) < 1.8f) {
+				if (Math.abs(yAcceleration) < (USES_BAND ? BAND_ERROR
+						: PHONE_ERROR)) {
 					pallet.setErrorCounter(pallet.getErrorCounter() + 1);
 				} else {
 					pallet.setErrorCounter(0);
@@ -108,15 +114,19 @@ public class PongController {
 
 					float initialVelocity = pallet.getVelocity();
 
-					pallet.setVelocity(initialVelocity + yAcceleration * dt);
-					pallet.setDistance((initialVelocity * dt + pallet
-							.getVelocity() * dt / 2f) * 400f);
+					float finalVelocity = initialVelocity + yAcceleration * dt;
+					pallet.setVelocity(finalVelocity);
 
-					velocities2.add(yAcceleration * dt);
+					float finalDistance = initialVelocity * dt
+							+ pallet.getVelocity() * dt / 2f * 3000f;
+					finalDistance = (USES_BAND ? finalDistance * 10000000000000f
+							: finalDistance);
+					pallet.setDistance(finalDistance);
 
-					linearAccelerations.add(yAcceleration);
-					velocities.add(pallet.getVelocity());
-					distances.add(pallet.getDistance());
+					//velocities2.add(yAcceleration * dt);
+					// linearAccelerations.add(yAcceleration);
+					// velocities.add(pallet.getVelocity());
+					// distances.add(pallet.getDistance());
 
 					updatePalletPosition(pallet, pallet.getDistance());
 				} else {
@@ -124,6 +134,7 @@ public class PongController {
 					pallet.setErrorCounter(0);
 				}
 			}
+
 		}
 		pallet.setLastTimeStamp(linearAcceleration.getTimestamp());
 	}
